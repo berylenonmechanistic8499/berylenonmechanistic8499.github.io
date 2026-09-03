@@ -23,21 +23,20 @@ You can view my CV [here](https://github.com/nathan-sunday/Nathan-Sunday-CV/blob
 
 ---
 ## Working Papers
----
+
 [**Commercial Property Taxes, Firm Behavior, and Fiscal Externalities**](https://github.com/nathan-sunday/Working-Papers/blob/main/Commercial_Property_Taxation__Firm__and_Fiscal_Externality.pdf), (Job Market Paper), August 2026  [[PDF]](https://github.com/nathan-sunday/Working-Papers/blob/main/Commercial_Property_Taxation__Firm__and_Fiscal_Externality.pdf)
 
-
+<details>
 <summary><strong>Abstract</strong> (click to expand)</summary>
 
 Property taxation is widely viewed as a promising source of revenue for developing countries, yet evidence on its economic effects remains limited. This paper exploits a natural experiment in Kampala, Uganda, in which a property revaluation and enumeration—the first in over a decade—increased commercial property tax liabilities within the city. Using administrative data from corporate and employee tax returns in a difference-in-differences framework, I find that the reform did not significantly affect firms' revenues and profits. Overall, firms maintained profitability by adjusting labor costs through reductions in formal employment and wages, with wage informalization accounting for most of the decline in the formal wage bill. Beyond these adjustments among active firms, the reform also reduced firms' probability of survival. Financial flexibility plays a critical role: moderately leveraged firms, with greater borrowing capacity, are largely insulated from the reform's adverse effects. The rental cost channel is an important mechanism through which property tax burdens are transmitted to firms, with the reform increasing business rental expenses by 9.1 percent. The reform also had progressive distributional effects within firms, with workers at the top of the earnings distribution bearing a disproportionate share of the adjustment. Finally, I quantify a vertical fiscal externality, whereby each UGX 1 increase in local property tax revenue reduces central government income tax revenue by approximately UGX 0.3. Using the Marginal Value of Public Funds framework, I estimate that raising UGX 1 of net consolidated public revenue costs the public UGX 1.53, implying that the reform is welfare-improving only if the value of the public goods it finances exceeds this threshold.
 
+<details>
 
 
 ---
 
-## Old-Age Pension and Labor Market Outcomes of Younger Individuals: Evidence from Uganda
-**October 2024**  
-[[PDF]](https://github.com/nathan-sunday/Working-Papers/blob/main/Pension_and_Labor_Market__Paper_Version_Aug_2025.pdf)
+[**Old-Age Pension and Labor Market Outcomes of Younger Individuals: Evidence from Uganda**] (https://github.com/nathan-sunday/Working-Papers/blob/main/Pension_and_Labor_Market__Paper_Version_Aug_2025.pdf), [[PDF]](https://github.com/nathan-sunday/Working-Papers/blob/main/Pension_and_Labor_Market__Paper_Version_Aug_2025.pdf), October 2024 
 
 <details>
 <summary><strong>Abstract</strong> (click to expand)</summary>
@@ -48,7 +47,7 @@ In most low-income countries, younger individuals play a central role in providi
 
 ---
 
-## Economic Effects of Decentralization: Firm Level Evidence
+**Economic Effects of Decentralization: Firm Level Evidence**
 
 <details>
 <summary><strong>Abstract</strong> (click to expand)</summary>
