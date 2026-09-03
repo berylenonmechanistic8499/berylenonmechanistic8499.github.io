@@ -47,12 +47,12 @@ In most low-income countries, younger individuals play a central role in providi
 
 ---
 
-**Economic Effects of Decentralization: Firm Level Evidence**
+**Decentralization, Firm Performance, and Fiscal Capacity: Evidence from Uganda**
 
 <details>
 <summary><strong>Abstract</strong> (click to expand)</summary>
 
-Decentralization of governance is widely argued to improve public goods provision, yet whether these gains translate into tangible benefits for the private sector remains an open question. I study this question in the context of Uganda, exploiting the 2015/16 wave of district creation in which 23 new districts were carved from existing ones. Using administrative data from corporate income tax records in a difference-in-differences framework, I find that the reform increased firm revenues by approximately 11 percent, with effects emerging two years after district creation, but has no significant impact on profits as revenue gains are offset by proportional increases in input costs. Improved electricity reliability is one mechanism underlying these effects. The gains depend critically on how evenly the parent district is divided: revenue increases are concentrated in symmetrically split districts, while highly asymmetric splits produce no significant effects. These findings suggest that decentralization can improve the business environment in low-income settings, but that realizing these gains requires attention not only to whether administrative units are subdivided but to how the boundaries are drawn.
+Decentralization is widely argued to improve public service delivery, yet its effects on private-sector activity and state fiscal capacity remain poorly understood. We study these effects in Uganda, exploiting the 2015/16 wave of district creation, in which 23 new districts were carved out of existing ones. Using firm-level administrative tax data in a staggered difference-in-differences design, we find that district creation increases firm revenues by approximately 13 percent, with effects emerging two years after the reform and growing thereafter. The revenue gains are accompanied by higher expenditures on intermediate inputs and labor, as well as increases in formal employment and the formal wage bill, while profits respond only modestly. Improved electricity reliability is one mechanism underlying these effects. The gains depend critically on administrative design: revenue increases are concentrated in relatively symmetric district splits, while highly asymmetric splits generate no detectable effects. Decentralization also strengthens central fiscal capacity, increasing corporate income tax remittances and effective tax rates, while expansion of the formal wage bill raises labor income tax revenue. Overall, the results show that decentralization can stimulate private-sector activity and central revenue mobilization, but that these gains depend importantly on the configuration of newly created jurisdictions.
 
 </details>
 
@@ -68,3 +68,10 @@ Decentralization of governance is widely argued to improve public goods provisio
 Sub-Saharan Africa faces high youth unemployment as the number of young people entering the labor market outpaces the creation of local jobs. At the same time, global freelancing platforms offer skilled workers access to employment opportunities beyond local labor markets, often at substantially higher wages. Yet informational and reputational frictions—including limited knowledge of effective bidding strategies, weak initial profiles, and insufficient job-search persistence—as well as liquidity constraints may prevent many skilled workers from successfully entering these markets. This study evaluates whether reducing these barriers improves remote-work outcomes for young African professionals. We conduct a randomized controlled trial (RCT) among workers who meet baseline screening criteria, assigning participants to treatment arms that vary exposure to two interventions: individualized mentoring from experienced African freelancers and liquidity support. We measure outcomes using platform administrative data and surveys, focusing on job-search intensity, contract acquisition, and earnings. The study also examines heterogeneity by gender, contributing to our understanding of frictions in digital labor markets and informing the design of scalable interventions to expand access to global employment opportunities.
 
 </details>
+
+
+---
+**Pre-Doctoral Research**
+
+---
+
