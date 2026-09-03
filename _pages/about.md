@@ -60,7 +60,7 @@ Decentralization is widely argued to improve public service delivery, yet its ef
 ---
 ## Work in Progress
 
-**Using Digital Connectivity to Expand Global Job Opportunities for African Workers**,  (with [Dean Yang](https://deanyang-econ.github.io/deanyang/), David Mckenzie, Heesung Kim, Robertson Khataza, and Ted Lui).  AEA RCT Registry. July 08, 2026. https://doi.org/10.1257/rct.16818-2.0
+**Using Digital Connectivity to Expand Global Job Opportunities for African Workers**,  (with [Dean Yang](https://deanyang-econ.github.io/deanyang/), David Mckenzie, Heesung Kim, Robertson Khataza, and Ted Lui).  AEA RCT Registry. July 08, 2026. [https://doi.org/10.1257/rct.16818-2.0](https://doi.org/10.1257/rct.16818-2.0)
 
 <details>
 <summary><strong>Abstract</strong> (click to expand)</summary>
@@ -82,7 +82,7 @@ Sub-Saharan Africa faces high youth unemployment as the number of young people e
 
 [**"How Specific Resilience Pillars Mitigate the Impact of Drought on Food Security: Evidence from Uganda"**](https://link.springer.com/article/10.1007/s12571-022-01313-9) (with Rehema Kahunde, Blessing Atwine, Adesoji Adelaja, and Justin George). *Food Security*, 2023. Vol. 15: 111–131.  
 
----
+
 **Book Chapters**
 
 [**"Employment and Productivity of Uganda's SMEs in the Face of COVID-19: A Gender Perspective"**](https://www.taylorfrancis.com/chapters/edit/10.4324/9781003208358-12/employment-productivity-uganda-smes-face-covid-19-sserunjogi-brian-nathan-sunday-paul-lakuma-rehema-kahunde) (with Brian Sserunjogi, Paul Lakuma, and Rehema Kahunde). In *Socioeconomic Shocks and Africa's Development Agenda*, Evans Osabuohien, Gbadebo Odularu, Daniel Ufua, and Romanus Osabohien (eds). Routledge, 2023.  
