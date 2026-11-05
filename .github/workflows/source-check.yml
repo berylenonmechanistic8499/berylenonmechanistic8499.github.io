@@ -1,4 +1,5 @@
-# Run by hand to see whether each data source accepts requests from GitHub's computers.
+# Run by hand to see whether each data source accepts requests from GitHub's computers, and whether
+# a complete build succeeds there. It has no permission to publish, so the live site is never touched.
 name: Check data sources
 
 on:
@@ -28,3 +29,26 @@ jobs:
             probe "Google News $attempt"   "$BROWSER" "https://news.google.com/rss/search?q=%22Nifty+50%22+when:7d&hl=en-IN&gl=IN&ceid=IN:en"
             sleep 5
           done
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm test
+      - uses: actions/cache/restore@v6
+        with:
+          path: .cache
+          key: downloads-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: downloads-
+      - run: npm run collect
+      - run: npm run assemble
+      - uses: actions/cache/save@v6
+        if: always()
+        with:
+          path: .cache
+          key: downloads-${{ github.run_id }}-${{ github.run_attempt }}
