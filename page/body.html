@@ -1,0 +1,59 @@
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--hero)"/><path d="M5 16h22" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M11 8v7M11 19v5M21 6v3M21 13v13" stroke="#fff" stroke-opacity=".62" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <span class="brand-name">Pivot Calculator</span>
+    </div>
+    <p class="status" id="data-status"></p>
+  </div>
+</header>
+
+<p id="moved-note" class="moved-note" hidden></p>
+
+<main>
+  <form id="controls" class="controls" autocomplete="off">
+    <div class="field instrument-field">
+      <label for="instrument">Stock or index</label>
+      <input id="instrument" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions" spellcheck="false" />
+      <ul id="suggestions" role="listbox" aria-label="Matching stocks and indices" hidden></ul>
+    </div>
+    <div class="field date-field">
+      <label for="date">Trading day</label>
+      <div class="date-control">
+        <button type="button" id="previous-day" class="step" aria-label="Previous trading day">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <input id="date" type="date" />
+        <button type="button" id="next-day" class="step" aria-label="Next trading day">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div class="presets" role="group" aria-label="Popular indices">
+    <button type="button" data-symbol="NIFTY 50">NIFTY 50</button>
+    <button type="button" data-symbol="NIFTY BANK">BANK NIFTY</button>
+    <button type="button" data-symbol="NIFTY FINANCIAL SERVICES">FINNIFTY</button>
+    <button type="button" data-symbol="SENSEX">SENSEX</button>
+    <button type="button" data-symbol="S&amp;P 500">S&amp;P 500</button>
+    <button type="button" data-symbol="NASDAQ COMPOSITE">NASDAQ</button>
+    <button type="button" data-symbol="DOW JONES">DOW</button>
+  </div>
+
+  <p id="announcer" class="visually-hidden" aria-live="polite"></p>
+  <section id="result"></section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <h2>Where the data comes from</h2>
+    <dl class="sources">
+      <div><dt>NSE stocks and NSE indices</dt><dd>Prices, delivery, P/E, P/B, dividend yield, market cap, filings and board meetings come from the National Stock Exchange's own daily reports.</dd></div>
+      <div><dt>SENSEX, S&amp;P 500, NASDAQ and Dow</dt><dd>Yahoo Finance, because no official source for these is usable here. Each of them says so beside its pivot.</dd></div>
+      <div><dt>Company financials</dt><dd>Yahoo Finance's annual figures, labelled where they appear.</dd></div>
+      <div><dt>News</dt><dd>Google News, kept only from established publishers such as Reuters, Bloomberg, The Economic Times, Mint, Moneycontrol, Business Standard and CNBC.</dd></div>
+    </dl>
+    <p class="fine-print"><span id="update-note"></span> For information only, not investment advice. Check figures against the exchange before you trade.</p>
+  </div>
+</footer>

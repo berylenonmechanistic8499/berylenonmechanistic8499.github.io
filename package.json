@@ -1,0 +1,16 @@
+{
+  "name": "pivot-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Calculates the pivot point of a stock or index for a chosen date.",
+  "scripts": {
+    "test": "node --test",
+    "collect": "node scripts/collect.js",
+    "assemble": "node scripts/assemble.js",
+    "build": "node scripts/collect.js && node scripts/assemble.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
