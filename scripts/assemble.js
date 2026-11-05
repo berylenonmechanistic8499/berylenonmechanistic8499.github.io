@@ -47,7 +47,7 @@ await writeFile(new URL('../dist/pivot-calculator.html', import.meta.url), `${he
 const body = await bodyFor({ autoUpdates: true });
 await writeFile(
   new URL('../dist/index.html', import.meta.url),
-  `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<link rel="icon" href="${FAVICON}">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`,
+  `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<meta name="robots" content="noindex">\n<link rel="icon" href="${FAVICON}">\n${head}\n</head>\n<body>\n${body}\n</body>\n</html>\n`,
 );
 
 console.log(`Built dist/index.html and dist/pivot-calculator.html: ${((head.length + body.length) / 1e6).toFixed(1)} MB, ${dataset.coverage}`);
