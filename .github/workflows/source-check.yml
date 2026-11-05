@@ -4,6 +4,11 @@ name: Check data sources
 
 on:
   workflow_dispatch:
+    inputs:
+      full_build:
+        description: Also test a complete build
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +28,15 @@ jobs:
           probe "NSE daily bundle"   "$BROWSER" "$NSE/archives/equities/bhavcopy/pr/PR041126.zip"
           probe "NSE stock list"     "$BROWSER" "$NSE/content/indices/ind_nifty100list.csv"
           probe "NSE name changes"   "$BROWSER" "$NSE/content/equities/symbolchange.csv"
+          probe "NSE main board list" "$BROWSER" "$NSE/content/equities/EQUITY_L.csv"
+          probe "NSE offer documents" "$BROWSER" "$NSE/content/RSS/Offer_Documents.xml"
+          probe "NSE open IPOs"      "$BROWSER" "https://www.nseindia.com/api/ipo-current-issue"
+          probe "NSE upcoming IPOs"  "$BROWSER" "https://www.nseindia.com/api/all-upcoming-issues?category=ipo"
+          probe "NSE past IPOs"      "$BROWSER" "https://www.nseindia.com/api/public-past-issues"
+          probe "NSE IPO detail"     "$BROWSER" "https://www.nseindia.com/api/ipo-detail?symbol=BCSSL&series=EQ"
+          probe "BSE price file"     "$BROWSER" "https://www.bseindia.com/download/BhavCopy/Equity/BhavCopy_BSE_CM_0_0_0_20261104_F_0000.CSV"
+          probe "SEBI RHP list"      "$BROWSER" "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=3&ssid=15&smid=11"
+          probe "SEBI draft list"    "$BROWSER" "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=3&ssid=15&smid=10"
           for attempt in 1 2 3; do
             probe "Yahoo chart $attempt"   "Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/%5EBSESN?range=5d&interval=1d"
             probe "Yahoo financials $attempt" "Mozilla/5.0" "https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/RELIANCE.NS?symbol=RELIANCE.NS&type=annualNetIncome&period1=1640995200&period2=1793000000"
@@ -32,6 +46,7 @@ jobs:
 
   build:
     needs: check
+    if: inputs.full_build
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
