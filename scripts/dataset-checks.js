@@ -2,7 +2,7 @@
 const DAY_MS = 86_400_000;
 const LATE_REPORT_DAYS = 3;
 const MAX_DATA_AGE_DAYS = 10;
-const MIN_STOCKS = 90;
+const MIN_STOCKS = 2000;
 
 const isoDay = (day) => new Date(day * DAY_MS).toISOString().slice(0, 10);
 
@@ -19,26 +19,21 @@ export function separateLateReports(reports) {
   return { ready: reports.slice(0, ready), late: reports.slice(ready).map((report) => report.date) };
 }
 
-const latestNseDay = (dataset) =>
-  Math.max(...dataset.instruments.filter((item) => item.source === 'nse').map((item) => item.days.at(-1)));
+export function hasCompletePrices(item) {
+  const lengths = [item.days, item.o, item.h, item.l, item.c].map((series) => series.length);
+  return lengths[0] > 0 && new Set(lengths).size === 1;
+}
 
-export function findDatasetProblems(dataset, previous, requiredSymbols, today) {
+export function findDatasetProblems({ stockCount, symbols, incomplete, latestNseDay: latest }, previousLatestNseDay, requiredSymbols, today) {
   const problems = [];
-  const symbols = new Set(dataset.instruments.map((item) => item.symbol));
-  const stocks = dataset.instruments.filter((item) => item.type === 'Stock');
-
-  if (stocks.length < MIN_STOCKS) problems.push(`only ${stocks.length} stocks`);
+  if (stockCount < MIN_STOCKS) problems.push(`only ${stockCount} stocks`);
   for (const symbol of requiredSymbols) {
     if (!symbols.has(symbol)) problems.push(`${symbol} is missing`);
   }
-  for (const item of dataset.instruments) {
-    const lengths = [item.days, item.o, item.h, item.l, item.c].map((series) => series.length);
-    if (!lengths[0] || new Set(lengths).size > 1) problems.push(`${item.symbol} has incomplete prices`);
-  }
+  for (const symbol of incomplete.slice(0, 5)) problems.push(`${symbol} has incomplete prices`);
 
-  const latest = latestNseDay(dataset);
-  if (previous && latest < latestNseDay(previous)) {
-    problems.push(`NSE data went backwards, from ${isoDay(latestNseDay(previous))} to ${isoDay(latest)}`);
+  if (previousLatestNseDay && latest < previousLatestNseDay) {
+    problems.push(`NSE data went backwards, from ${isoDay(previousLatestNseDay)} to ${isoDay(latest)}`);
   }
   if (Date.parse(today) / DAY_MS - latest > MAX_DATA_AGE_DAYS) {
     problems.push(`the newest NSE data is from ${isoDay(latest)}`);

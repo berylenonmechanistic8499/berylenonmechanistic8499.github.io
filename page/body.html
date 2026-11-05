@@ -1,59 +1,75 @@
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="brand">
-      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--hero)"/><path d="M5 16h22" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M11 8v7M11 19v5M21 6v3M21 13v13" stroke="#fff" stroke-opacity=".62" stroke-width="2.5" stroke-linecap="round"/></svg>
+    <a class="brand" href="#pivot">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--hero)"/><path d="M5 16h22" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M11 8v7M11 19v5M21 6v3M21 13v13" stroke="#fff" stroke-opacity=".62" stroke-width="2.5" stroke-linecap="round"/></svg>
       <span class="brand-name">Pivot Calculator</span>
+    </a>
+    <nav class="menu" aria-label="Main menu">
+      <span class="menu-indicator" aria-hidden="true"></span>
+      <a href="#pivot" data-view="pivot">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M2 10h16M6 4v5M6 12v4M14 3v2M14 8v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Pivot</span>
+      </a>
+      <a href="#ipos" data-view="ipos">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2.5c3 1.8 4.5 4.6 4.5 8l-1.8 3.5H7.3L5.5 10.500c0-3.400 1.500-6.200 4.500-8ZM7.500 14l-1.500 3.500 2.500-1M12.500 14l1.500 3.500-2.500-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="10" cy="8.500" r="1.500" fill="currentColor"/></svg>
+        <span>IPOs</span>
+      </a>
+    </nav>
+    <div class="topbar-end">
+      <p class="status" id="data-status"></p>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch between light and dark">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2.500a7.500 7.500 0 1 0 0 15Z" fill="currentColor"/><circle cx="10" cy="10" r="7.500" fill="none" stroke="currentColor" stroke-width="1.700"/></svg>
+      </button>
     </div>
-    <p class="status" id="data-status"></p>
   </div>
+  <div class="progress" id="progress" hidden></div>
 </header>
 
-<p id="moved-note" class="moved-note" hidden></p>
-
 <main>
-  <form id="controls" class="controls" autocomplete="off">
-    <div class="field instrument-field">
-      <label for="instrument">Stock or index</label>
-      <input id="instrument" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions" spellcheck="false" />
-      <ul id="suggestions" role="listbox" aria-label="Matching stocks and indices" hidden></ul>
-    </div>
-    <div class="field date-field">
-      <label for="date">Trading day</label>
-      <div class="date-control">
-        <button type="button" id="previous-day" class="step" aria-label="Previous trading day">
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <input id="date" type="date" />
-        <button type="button" id="next-day" class="step" aria-label="Next trading day">
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
+  <section id="view-pivot" class="view">
+    <form id="controls" class="controls" autocomplete="off">
+      <div class="field instrument-field">
+        <label for="instrument">Stock or index</label>
+        <div class="search-box">
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="9" cy="9" r="5.500" fill="none" stroke="currentColor" stroke-width="1.800"/><path d="m13.500 13.500 3.500 3.500" stroke="currentColor" stroke-width="1.800" stroke-linecap="round"/></svg>
+          <input id="instrument" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions" spellcheck="false" />
+        </div>
+        <ul id="suggestions" role="listbox" aria-label="Matching stocks and indices" hidden></ul>
       </div>
-    </div>
-  </form>
+      <div class="field date-field">
+        <label for="date">Trading day</label>
+        <div class="date-control">
+          <button type="button" id="previous-day" class="step" aria-label="Previous trading day">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <input id="date" type="date" />
+          <button type="button" id="next-day" class="step" aria-label="Next trading day">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </form>
 
-  <div class="presets" role="group" aria-label="Popular indices">
-    <button type="button" data-symbol="NIFTY 50">NIFTY 50</button>
-    <button type="button" data-symbol="NIFTY BANK">BANK NIFTY</button>
-    <button type="button" data-symbol="NIFTY FINANCIAL SERVICES">FINNIFTY</button>
-    <button type="button" data-symbol="SENSEX">SENSEX</button>
-    <button type="button" data-symbol="S&amp;P 500">S&amp;P 500</button>
-    <button type="button" data-symbol="NASDAQ COMPOSITE">NASDAQ</button>
-    <button type="button" data-symbol="DOW JONES">DOW</button>
-  </div>
+    <div class="presets" id="presets" role="group" aria-label="Major indices, with their latest close"></div>
 
-  <p id="announcer" class="visually-hidden" aria-live="polite"></p>
-  <section id="result"></section>
+    <p id="announcer" class="visually-hidden" aria-live="polite"></p>
+    <div id="result"></div>
+  </section>
+
+  <section id="view-ipos" class="view" hidden></section>
 </main>
 
 <footer class="site-footer">
   <div class="footer-inner">
     <h2>Where the data comes from</h2>
     <dl class="sources">
-      <div><dt>NSE stocks and NSE indices</dt><dd>Prices, delivery, P/E, P/B, dividend yield, market cap, filings and board meetings come from the National Stock Exchange's own daily reports.</dd></div>
+      <div><dt>NSE stocks and indices</dt><dd>Prices, delivery, P/E, P/B, dividend yield, market cap, filings and board meetings come from the National Stock Exchange's own daily reports.</dd></div>
+      <div><dt>Companies only on BSE</dt><dd>Prices come from the Bombay Stock Exchange's own daily price file.</dd></div>
+      <div><dt>IPOs</dt><dd>NSE's public issue records and SEBI's lists of offer documents. Listing gains are worked out from official prices.</dd></div>
       <div><dt>SENSEX, S&amp;P 500, NASDAQ and Dow</dt><dd>Yahoo Finance, because no official source for these is usable here. Each of them says so beside its pivot.</dd></div>
-      <div><dt>Company financials</dt><dd>Yahoo Finance's annual figures, labelled where they appear.</dd></div>
+      <div><dt>Company financials</dt><dd>Yahoo Finance's annual figures for NIFTY 500 companies, labelled where they appear.</dd></div>
       <div><dt>News</dt><dd>Google News, kept only from established publishers such as Reuters, Bloomberg, The Economic Times, Mint, Moneycontrol, Business Standard and CNBC.</dd></div>
     </dl>
-    <p class="fine-print"><span id="update-note"></span> For information only, not investment advice. Check figures against the exchange before you trade.</p>
+    <p class="fine-print">New prices and news arrive every evening, India time, once the exchanges publish their reports. For information only, not investment advice. Check figures against the exchange before you trade or apply.</p>
   </div>
 </footer>

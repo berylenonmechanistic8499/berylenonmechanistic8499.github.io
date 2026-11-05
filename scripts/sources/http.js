@@ -1,5 +1,5 @@
 // Downloads with a disk cache, so a rebuild only fetches what it doesn't already have.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync, gzipSync } from 'node:zlib';
@@ -15,7 +15,16 @@ export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class RateLimited extends Error {}
 
+let usedNetwork = false;
+
+// Keeps a polite gap between real requests, without slowing down answers from the cache.
+export async function pauseAfterNetwork(ms) {
+  if (usedNetwork) await sleep(ms);
+  usedNetwork = false;
+}
+
 export async function download(url, headers = {}) {
+  usedNetwork = true;
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, {
       headers: { ...HEADERS, ...headers },
@@ -55,6 +64,15 @@ export function writeCache(key, text) {
   writeFileSync(path, text);
 }
 
+export function clearCacheFolder(key) {
+  rmSync(join(CACHE_DIR, key), { recursive: true, force: true });
+}
+
+export function replaceCacheFolder(fromKey, toKey) {
+  clearCacheFolder(toKey);
+  renameSync(join(CACHE_DIR, fromKey), join(CACHE_DIR, toKey));
+}
+
 export function readCache(key) {
   const path = join(CACHE_DIR, key);
   return existsSync(path) ? readFileSync(path, 'utf8') : null;
@@ -77,7 +95,7 @@ export async function mapPool(items, size, delayMs, task) {
       while (next < items.length) {
         const index = next++;
         results[index] = await task(items[index], index);
-        await sleep(delayMs);
+        await pauseAfterNetwork(delayMs);
       }
     }),
   );

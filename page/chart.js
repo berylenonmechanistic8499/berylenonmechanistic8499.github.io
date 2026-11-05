@@ -10,7 +10,9 @@ const MAX_BODY_WIDTH = 14;
 
 function svgEl(tag, attrs = {}, ...children) {
   const node = document.createElementNS(SVG_NS, tag);
-  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value !== null && value !== undefined) node.setAttribute(key, value);
+  }
   node.append(...children);
   return node;
 }
@@ -33,7 +35,7 @@ function decimalsFor(step) {
   return 4;
 }
 
-export function renderChart(host, { bars: allBars, selectedIndex, pivot, formatPrice, formatAxis, formatDate, formatShortDate, onSelect }) {
+export function renderChart(host, { bars: allBars, selectedIndex, pivot, formatPrice, formatAxis, formatDate, formatShortDate, onSelect, animate }) {
   const width = host.clientWidth;
   if (!width) return;
   const narrow = width < NARROW_WIDTH;
@@ -65,6 +67,7 @@ export function renderChart(host, { bars: allBars, selectedIndex, pivot, formatP
     viewBox: `0 0 ${width} ${height}`,
     height,
     role: 'img',
+    class: animate ? 'is-animated' : null,
     'aria-label': `Candlestick chart of ${bars.length} sessions from ${formatDate(bars[0].date)} to ${formatDate(bars.at(-1).date)}, with the pivot level of ${formatPrice(pivot)}. The sessions table lists the same values.`,
   });
 
@@ -74,14 +77,14 @@ export function renderChart(host, { bars: allBars, selectedIndex, pivot, formatP
   for (const tick of ticks) {
     const tickY = y(tick);
     chart.append(svgEl('line', { x1: MARGIN.left, x2: width - MARGIN.right, y1: tickY, y2: tickY, stroke: 'var(--grid)', 'stroke-width': 1 }));
-    if (Math.abs(tickY - pivotY) > 15) {
+    if (Math.abs(tickY - pivotY) > 20) {
       const label = svgEl('text', { x: width - MARGIN.right + 8, y: tickY + 4, class: 'axis-label' });
       label.textContent = formatAxis(tick, decimals);
       chart.append(label);
     }
   }
 
-  chart.append(svgEl('line', { x1: MARGIN.left, x2: width - MARGIN.right, y1: pivotY, y2: pivotY, stroke: 'var(--pivot)', 'stroke-width': 2 }));
+  chart.append(svgEl('line', { class: 'pivot-level', pathLength: 1, x1: MARGIN.left, x2: width - MARGIN.right, y1: pivotY, y2: pivotY, stroke: 'var(--pivot)', 'stroke-width': 2 }));
 
   bars.forEach((bar, index) => {
     const isUp = bar.chartClose >= bar.chartOpen;
@@ -89,18 +92,22 @@ export function renderChart(host, { bars: allBars, selectedIndex, pivot, formatP
     const top = y(Math.max(bar.chartOpen, bar.chartClose));
     const bottom = y(Math.min(bar.chartOpen, bar.chartClose));
     chart.append(
-      svgEl('line', { x1: x(index), x2: x(index), y1: y(bar.chartHigh), y2: y(bar.chartLow), stroke: color, 'stroke-width': 1.25 }),
-      // Hollow against solid means direction never depends on telling the two colours apart.
-      svgEl('rect', {
-        x: x(index) - bodyWidth / 2,
-        y: top,
-        width: bodyWidth,
-        height: Math.max(1.5, bottom - top),
-        rx: 1,
-        fill: isUp ? (index === selected ? 'var(--band)' : 'var(--surface)') : color,
-        stroke: color,
-        'stroke-width': 1.25,
-      }),
+      svgEl(
+        'g',
+        { class: 'candle', style: `--i: ${index}` },
+        svgEl('line', { x1: x(index), x2: x(index), y1: y(bar.chartHigh), y2: y(bar.chartLow), stroke: color, 'stroke-width': 1.25 }),
+        // Hollow against solid means direction never depends on telling the two colours apart.
+        svgEl('rect', {
+          x: x(index) - bodyWidth / 2,
+          y: top,
+          width: bodyWidth,
+          height: Math.max(1.5, bottom - top),
+          rx: 1,
+          fill: isUp ? (index === selected ? 'var(--band)' : 'var(--surface)') : color,
+          stroke: color,
+          'stroke-width': 1.25,
+        }),
+      ),
     );
   });
 

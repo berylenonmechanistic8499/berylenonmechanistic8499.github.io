@@ -86,12 +86,20 @@ export function reportsOnlyThisDate(text, iso) {
 }
 
 // On a holiday this URL still answers, with another day's prices, so the date on the rows is checked.
-export async function fetchPriceReport(iso) {
-  const body = await cachedDownload(
+function downloadPriceReport(iso) {
+  return cachedDownload(
     `nse/prices/${iso}.csv`,
     `${ARCHIVE}/products/content/sec_bhavdata_full_${dayMonthYear(iso)}.csv`,
     { isValid: (buffer) => reportsOnlyThisDate(buffer.toString('utf8', 0, 600), iso) },
   );
+}
+
+export async function hasPriceReport(iso) {
+  return Boolean(await downloadPriceReport(iso));
+}
+
+export async function fetchPriceReport(iso) {
+  const body = await downloadPriceReport(iso);
   return body ? parseCsv(body.toString('utf8')) : null;
 }
 
@@ -127,6 +135,7 @@ export async function fetchDailyBundle(iso) {
     corporateActions: part(`bc${suffix}.csv`),
     boardMeetings: part(`bm${suffix}.txt`),
     marketCaps: part(`mcap${suffix}.csv`),
+    smeList: part(`sme${suffix}.csv`),
   };
 }
 
@@ -137,7 +146,8 @@ async function fetchListing(path) {
   return parseCsv(body.toString('latin1'));
 }
 
-export const fetchNifty100List = () => fetchListing('content/indices/ind_nifty100list.csv');
+export const fetchNifty500List = () => fetchListing('content/indices/ind_nifty500list.csv');
+export const fetchTotalMarketList = () => fetchListing('content/indices/ind_niftytotalmarket_list.csv');
 export const fetchEquityList = () => fetchListing('content/equities/EQUITY_L.csv');
 export const fetchSymbolChanges = () => fetchListing('content/equities/symbolchange.csv');
 
@@ -164,36 +174,42 @@ export function createSymbolResolver(changes) {
   };
 }
 
-const SERIES_PREFERENCE = ['EQ', 'BE', 'BZ'];
+// EQ, BE and BZ are the main board, and SM and ST are the SME platform. The report's other series are bonds, funds and the like.
+const STOCK_SERIES = ['EQ', 'BE', 'BZ', 'SM', 'ST'];
+export const SME_SERIES = new Set(['SM', 'ST']);
+
+// One day's rows go straight into each stock's history, so the build never holds whole reports in memory.
+export function addStockSessions(sessions, date, rows, targets, resolveSymbol) {
+  const chosen = new Map();
+  for (const row of rows) {
+    const rank = STOCK_SERIES.indexOf(row.SERIES);
+    if (rank < 0) continue;
+    const symbol = resolveSymbol(row.SYMBOL, date);
+    if (!targets.has(symbol)) continue;
+    if (!chosen.has(symbol) || rank < chosen.get(symbol).rank) chosen.set(symbol, { rank, row });
+  }
+  for (const [symbol, { row }] of chosen) {
+    const open = toNumber(row.OPEN_PRICE);
+    const high = toNumber(row.HIGH_PRICE);
+    const low = toNumber(row.LOW_PRICE);
+    const close = toNumber(row.CLOSE_PRICE);
+    if (!open || !high || !low || !close) continue;
+    if (!sessions.has(symbol)) sessions.set(symbol, []);
+    sessions.get(symbol).push({
+      date,
+      open,
+      high,
+      low,
+      close,
+      volume: toNumber(row.TTL_TRD_QNTY),
+      delivery: toNumber(row.DELIV_PER),
+    });
+  }
+}
 
 export function collectStockSessions(reports, targets, resolveSymbol) {
-  const sessions = new Map([...targets].map((symbol) => [symbol, []]));
-  for (const { date, rows } of reports) {
-    const chosen = new Map();
-    for (const row of rows) {
-      const rank = SERIES_PREFERENCE.indexOf(row.SERIES);
-      if (rank < 0) continue;
-      const symbol = resolveSymbol(row.SYMBOL, date);
-      if (!targets.has(symbol)) continue;
-      if (!chosen.has(symbol) || rank < chosen.get(symbol).rank) chosen.set(symbol, { rank, row });
-    }
-    for (const [symbol, { row }] of chosen) {
-      const open = toNumber(row.OPEN_PRICE);
-      const high = toNumber(row.HIGH_PRICE);
-      const low = toNumber(row.LOW_PRICE);
-      const close = toNumber(row.CLOSE_PRICE);
-      if (!open || !high || !low || !close) continue;
-      sessions.get(symbol).push({
-        date,
-        open,
-        high,
-        low,
-        close,
-        volume: toNumber(row.TTL_TRD_QNTY),
-        delivery: toNumber(row.DELIV_PER),
-      });
-    }
-  }
+  const sessions = new Map();
+  for (const { date, rows } of reports) addStockSessions(sessions, date, rows, targets, resolveSymbol);
   return sessions;
 }
 
@@ -268,7 +284,7 @@ export function parseAnnouncements(text, date, targets) {
 
 export function parseCorporateActions(text, fromDate, targets) {
   return parseCsv(text)
-    .filter((row) => row.SERIES === 'EQ' && targets.has(row.SYMBOL) && row.EX_DT >= fromDate)
+    .filter((row) => STOCK_SERIES.includes(row.SERIES) && targets.has(row.SYMBOL) && row.EX_DT >= fromDate)
     .map((row) => ({ symbol: row.SYMBOL, date: row.EX_DT, purpose: shorten(row.PURPOSE) }));
 }
 
@@ -288,7 +304,7 @@ export function parseBoardMeetings(text, fromDate, targets) {
 export function parseMarketCaps(text, targets) {
   const caps = new Map();
   for (const row of parseCsv(text)) {
-    if (row.Series !== 'EQ' || !targets.has(row.Symbol)) continue;
+    if (!STOCK_SERIES.includes(row.Series) || !targets.has(row.Symbol)) continue;
     caps.set(row.Symbol, {
       marketCap: toNumber(row['Market Cap(Rs.)']),
       shares: toNumber(row['Issue Size']),
@@ -296,4 +312,8 @@ export function parseMarketCaps(text, targets) {
     });
   }
   return caps;
+}
+
+export function parseSmeNames(text) {
+  return new Map(parseCsv(text).map((row) => [row.SYMBOL, row.SECURITY]));
 }

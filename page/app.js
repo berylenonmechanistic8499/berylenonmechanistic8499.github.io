@@ -1,5 +1,11 @@
-const market = createMarket(JSON.parse(document.querySelector('#market-data').textContent));
-const site = JSON.parse(document.querySelector('#site-config').textContent);
+const meta = JSON.parse(document.querySelector('#market-data').textContent);
+const dataUrl = (path) => `data/${path}?v=${meta.builtOn}`;
+
+const market = createMarket(meta, async (symbol) => {
+  const response = await fetch(dataUrl(`i/${instrumentFile(symbol)}`));
+  if (!response.ok) throw new Error(`Couldn't load ${symbol}`);
+  return response.json();
+});
 
 const instrumentInput = document.querySelector('#instrument');
 const suggestions = document.querySelector('#suggestions');
@@ -8,15 +14,19 @@ const previousDay = document.querySelector('#previous-day');
 const nextDay = document.querySelector('#next-day');
 const result = document.querySelector('#result');
 const announcer = document.querySelector('#announcer');
-const presets = [...document.querySelectorAll('.presets button')];
+const presetsHost = document.querySelector('#presets');
+const progress = document.querySelector('#progress');
+const views = { pivot: document.querySelector('#view-pivot'), ipos: document.querySelector('#view-ipos') };
+const menuLinks = [...document.querySelectorAll('.menu a')];
+const menuIndicator = document.querySelector('.menu-indicator');
 
-const SEARCH_DELAY_MS = 120;
-const SOURCE_NAMES = { nse: 'Official NSE data', yahoo: 'Yahoo Finance data' };
-const SOURCE_CREDITS = { nse: 'NSE daily reports', yahoo: 'Yahoo Finance' };
+const SEARCH_DELAY_MS = 100;
+const PROGRESS_DELAY_MS = 120;
+const TWEEN_MS = 420;
+const SOURCE_NAMES = { nse: 'Official NSE data', bse: 'Official BSE data', yahoo: 'Yahoo Finance data' };
+const SOURCE_CREDITS = { nse: 'NSE daily reports', bse: 'BSE daily reports', yahoo: 'Yahoo Finance' };
 // Long enough to cover India's longest market closures, so this only appears if updates have really stopped.
 const STALE_AFTER_DAYS = 6;
-const CRORE = 10_000_000;
-const LAKH = 100_000;
 
 let instrument = null; // { symbol, label }
 let current = null;
@@ -24,69 +34,34 @@ let drawChart = null;
 let searchTimer = null;
 let options = [];
 let activeOption = -1;
+let dateTouched = false;
+let loadToken = 0;
+let progressTimer = null;
+let shownPivot = null;
+let iposLoaded = false;
 
-// Building nodes with textContent keeps text from outside sources out of the HTML parser.
-function el(tag, props = {}, ...children) {
-  const node = document.createElement(tag);
-  for (const [key, value] of Object.entries(props)) {
-    if (value === undefined || value === null) continue;
-    if (key === 'class') node.className = value;
-    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
-    else node.setAttribute(key, value);
-  }
-  node.append(...children.filter((child) => child !== null && child !== undefined));
-  return node;
+const displaySymbol = (symbol) => symbol.replace(/^BSE:/, '');
+
+function setBusy(busy) {
+  clearTimeout(progressTimer);
+  result.toggleAttribute('aria-busy', busy);
+  if (busy) progressTimer = setTimeout(() => (progress.hidden = false), PROGRESS_DELAY_MS);
+  else progress.hidden = true;
 }
 
-const locale = (currency) => (currency === 'INR' ? 'en-IN' : 'en-US');
-
-function formatNumber(value, currency, decimals = 2) {
-  return new Intl.NumberFormat(locale(currency), {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value);
-}
-
-function formatSigned(value, currency, decimals = 2) {
-  const sign = value > 0 ? '+' : value < 0 ? '−' : '';
-  return `${sign}${formatNumber(Math.abs(value), currency, decimals)}`;
-}
-
-function formatQuantity(value) {
-  if (value >= CRORE) return `${formatNumber(value / CRORE, 'INR')} Cr`;
-  if (value >= LAKH) return `${formatNumber(value / LAKH, 'INR')} L`;
-  return formatNumber(value, 'INR', 0);
-}
-
-const formatCrore = (value) => formatNumber(value / CRORE, 'INR', 0);
-
-const dateFrom = (iso) => new Date(`${iso}T00:00:00Z`);
-
-function formatDate(iso) {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(dateFrom(iso));
-}
-
-const formatPlainDate = (iso) =>
-  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(dateFrom(iso));
-
-const formatShortDate = (iso) =>
-  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(dateFrom(iso));
-
-const formatYear = (iso) =>
-  new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(dateFrom(iso));
-
-const safeUrl = (url) => (typeof url === 'string' && url.startsWith('https://') ? url : null);
-
-function externalLink(url, text) {
-  const href = safeUrl(url);
-  if (!href) return text;
-  return el('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
+// Counts the pivot from its last value to the new one, always ending on the exact figure.
+function tweenPivot(node, from, to, format) {
+  node.textContent = format(to);
+  if (!prefersMotion() || from === null || from === to) return;
+  const start = performance.now();
+  const frame = (now) => {
+    if (!node.isConnected) return;
+    const progressed = Math.min(1, (now - start) / TWEEN_MS);
+    const eased = 1 - (1 - progressed) ** 3;
+    node.textContent = format(progressed === 1 ? to : from + (to - from) * eased);
+    if (progressed < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }
 
 /* Pivot panel */
@@ -111,25 +86,25 @@ function renderHero(data) {
     ),
   );
 
+  const metaLine = [item.symbol === item.name ? null : displaySymbol(item.symbol), item.exchange, item.board === 'SME' ? 'SME' : null, item.currency].filter(Boolean).join(' · ');
+  const pivotValue = el('p', { class: 'pivot-value' });
+  tweenPivot(pivotValue, shownPivot, session.pivot, price);
+  shownPivot = session.pivot;
+
   return el(
     'article',
     { class: 'hero' },
     el(
       'div',
       { class: 'hero-head' },
-      el(
-        'div',
-        {},
-        el('h2', {}, item.name),
-        el('p', { class: 'hero-meta' }, [item.symbol === item.name ? null : item.symbol, item.exchange, item.currency].filter(Boolean).join(' · ')),
-      ),
+      el('div', {}, el('h2', {}, item.name), el('p', { class: 'hero-meta' }, metaLine)),
       el('span', { class: 'source-tag' }, SOURCE_NAMES[item.source]),
     ),
     el(
       'div',
       {},
       el('p', { class: 'pivot-label' }, el('strong', {}, 'Pivot point'), ` for ${formatDate(date)}`),
-      el('div', { class: 'pivot-line' }, el('p', { class: 'pivot-value' }, price(session.pivot))),
+      el('div', { class: 'pivot-line' }, pivotValue),
       el('p', { class: 'pivot-reading' }, readingText),
     ),
     el(
@@ -148,7 +123,6 @@ function renderHero(data) {
 function noSessionText(data) {
   const { instrument: item } = data;
   const date = formatDate(data.date);
-  const source = SOURCE_CREDITS[item.source];
   switch (data.reason) {
     case 'ended':
       return {
@@ -158,7 +132,7 @@ function noSessionText(data) {
     case 'missing':
       return {
         title: `No prices for ${date}`,
-        body: `The market was open, but ${source} has no prices for ${item.name} on this day.`,
+        body: `The market was open, but ${SOURCE_CREDITS[item.source]} has no prices for ${item.name} that day. It usually means the stock didn't trade.`,
       };
     case 'before':
       return {
@@ -194,21 +168,18 @@ function renderNoSession(data) {
 /* Chart */
 
 function legendKey(kind) {
-  const svg = (children) => {
-    const node = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    node.setAttribute('width', '14');
-    node.setAttribute('height', '14');
-    node.setAttribute('viewBox', '0 0 14 14');
-    node.setAttribute('aria-hidden', 'true');
-    node.innerHTML = children;
-    return node;
-  };
-  if (kind === 'up') return svg('<rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="var(--up)" stroke-width="1.5"/>');
-  if (kind === 'down') return svg('<rect x="3" y="2" width="8" height="10" rx="1" fill="var(--down)"/>');
-  return svg('<path d="M0 7h14" stroke="var(--pivot)" stroke-width="2"/>');
+  const node = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  node.setAttribute('width', '14');
+  node.setAttribute('height', '14');
+  node.setAttribute('viewBox', '0 0 14 14');
+  node.setAttribute('aria-hidden', 'true');
+  if (kind === 'up') node.innerHTML = '<rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="var(--up)" stroke-width="1.5"/>';
+  else if (kind === 'down') node.innerHTML = '<rect x="3" y="2" width="8" height="10" rx="1" fill="var(--down)"/>';
+  else node.innerHTML = '<path d="M0 7h14" stroke="var(--pivot)" stroke-width="2"/>';
+  return node;
 }
 
-function renderChartCard(data) {
+function renderChartCard(data, animate) {
   const { instrument: item, session, chart } = data;
   const host = el('div', {
     class: 'chart-host',
@@ -218,7 +189,8 @@ function renderChartCard(data) {
     'aria-label': 'Price chart. Use the left and right arrow keys to read sessions, and Enter to choose one.',
   });
 
-  drawChart = () =>
+  let animateNext = animate;
+  drawChart = () => {
     renderChart(host, {
       bars: chart.bars,
       selectedIndex: chart.selectedIndex,
@@ -228,7 +200,10 @@ function renderChartCard(data) {
       formatDate,
       formatShortDate,
       onSelect: goToDate,
+      animate: animateNext,
     });
+    animateNext = false;
+  };
 
   return el(
     'article',
@@ -257,21 +232,6 @@ function renderChartCard(data) {
 }
 
 /* Fundamentals */
-
-function stat(label, value, { className, isText } = {}) {
-  if (value === null || value === undefined || value === '') return null;
-  return el('div', { class: 'stat' }, el('dt', {}, label), el('dd', { class: [className, isText ? 'is-text' : null].filter(Boolean).join(' ') || null }, value));
-}
-
-const directionClass = (value) => (value > 0 ? 'is-up' : value < 0 ? 'is-down' : null);
-const statGroup = (className, ...stats) => {
-  const present = stats.filter(Boolean);
-  return present.length ? el('dl', { class: ['stats', className].filter(Boolean).join(' ') }, ...present) : null;
-};
-
-function sectionHead(title, note) {
-  return el('div', { class: 'section-head' }, el('h3', { class: 'section-title' }, title), note ? el('p', { class: 'section-note' }, note) : null);
-}
 
 function renderSessionStats(data) {
   const { instrument: item, session, range } = data;
@@ -306,6 +266,7 @@ function renderRange(data) {
     el(
       'div',
       { class: 'range-track', role: 'img', 'aria-label': `The close sits ${Math.round(range.position * 100)}% of the way from the low of ${price(range.low)} to the high of ${price(range.high)}.` },
+      el('span', { class: 'range-fill', style: `width: ${(range.position * 100).toFixed(1)}%` }),
       el('span', { class: 'range-marker', style: `left: ${(range.position * 100).toFixed(1)}%` }),
     ),
     el(
@@ -320,20 +281,23 @@ function renderRange(data) {
 function renderProfile(item) {
   const { profile } = item;
   if (!profile) return null;
-  const number = (value) => (value === null ? null : formatNumber(value, 'INR'));
+  const number = (value) => (value === null || value === undefined ? null : formatNumber(value));
+  const hasFaceValue = profile.faceValue !== null && profile.faceValue !== undefined;
   return el(
     'section',
     {},
-    sectionHead('Company', `Latest, as of ${formatPlainDate(profile.asOf)}. Source: NSE daily reports`),
+    sectionHead('Company', `Latest, as of ${formatPlainDate(profile.asOf)}. Source: ${SOURCE_CREDITS[item.source]}`),
     statGroup(
       'is-company',
       profile.marketCap ? stat('Market cap', `₹${formatCrore(profile.marketCap)} Cr`) : null,
       stat('P/E', number(profile.pe)),
       stat('Adjusted P/E', number(profile.adjustedPe)),
       profile.shares ? stat('Shares issued', formatQuantity(profile.shares)) : null,
-      stat('Face value', profile.faceValue === null ? null : `₹${formatNumber(profile.faceValue, 'INR', profile.faceValue % 1 ? 2 : 0)}`),
+      stat('Face value', hasFaceValue ? `₹${formatNumber(profile.faceValue, 'INR', profile.faceValue % 1 ? 2 : 0)}` : null),
       stat('Sector', profile.industry, { isText: true }),
       profile.listed ? stat('Listed since', formatPlainDate(profile.listed), { isText: true }) : null,
+      stat('BSE group', profile.group, { isText: true }),
+      stat('BSE scrip code', profile.code, { isText: true }),
       stat('ISIN', profile.isin, { isText: true }),
     ),
   );
@@ -380,9 +344,9 @@ function renderFinancials(item) {
               el('td', {}, formatYear(row.year)),
               el('td', {}, cell(row.revenue, formatCrore)),
               el('td', {}, cell(row.profit, formatCrore)),
-              el('td', {}, cell(row.eps, (value) => formatNumber(value, 'INR'))),
+              el('td', {}, cell(row.eps, (value) => formatNumber(value))),
               el('td', {}, cell(ratio(row.profit, row.equity), (value) => `${formatNumber(value * 100, 'INR', 1)}%`)),
-              showDebt ? el('td', {}, cell(ratio(row.debt, row.equity), (value) => formatNumber(value, 'INR'))) : null,
+              showDebt ? el('td', {}, cell(ratio(row.debt, row.equity), (value) => formatNumber(value))) : null,
             ),
           ),
         ),
@@ -479,10 +443,11 @@ function renderNews(item) {
     item.newsUrl ? externalLink(item.newsUrl, 'Latest news ↗') : null,
     item.officialUrl ? externalLink(item.officialUrl, 'Official page ↗') : null,
   );
+  const collected = item.news.length || item.type === 'Index' || item.financials?.length;
   return el(
     'section',
     {},
-    sectionHead('News', `Collected on ${formatPlainDate(market.builtOn)}`),
+    sectionHead('News', collected ? `Collected on ${formatPlainDate(market.builtOn)}` : null),
     item.news.length
       ? el(
           'ul',
@@ -496,7 +461,7 @@ function renderNews(item) {
             ),
           ),
         )
-      : el('p', { class: 'empty' }, 'No recent headlines from the publishers this page trusts.'),
+      : el('p', { class: 'empty' }, collected ? 'No recent headlines from the publishers this page trusts.' : `Headlines are collected for ${market.newsCoverage} companies and major indices. Use the link below to see news for this company.`),
     links,
   );
 }
@@ -505,10 +470,24 @@ function renderNews(item) {
 
 function renderPrompt(message) {
   drawChart = null;
+  shownPivot = null;
   result.replaceChildren(el('article', { class: 'hero is-message' }, el('p', { class: 'message-body' }, message)));
 }
 
-function render() {
+function renderLoadError() {
+  drawChart = null;
+  result.replaceChildren(
+    el(
+      'article',
+      { class: 'hero is-message' },
+      el('p', { class: 'message-title' }, `Couldn’t load ${instrument.label}`),
+      el('p', { class: 'message-body' }, 'Check your internet connection and try again.'),
+      el('div', { class: 'actions' }, el('button', { type: 'button', onclick: () => showCurrent({ fresh: true }) }, 'Try again')),
+    ),
+  );
+}
+
+function render({ fresh = false } = {}) {
   if (!dateInput.value || !dateInput.validity.valid) {
     previousDay.disabled = true;
     nextDay.disabled = true;
@@ -526,17 +505,19 @@ function render() {
   drawChart = null;
 
   if (session) {
-    sections.push(el('div', { class: 'primary' }, renderHero(data), renderChartCard(data)));
+    sections.push(el('div', { class: 'primary' }, renderHero(data), renderChartCard(data, fresh)));
+    const profile = renderProfile(item);
     sections.push(
       el(
         'div',
         { class: 'fundamentals' },
         renderSessionStats(data),
-        el('div', { class: item.profile ? 'about-row' : null }, renderRange(data), renderProfile(item)),
+        el('div', { class: profile ? 'about-row' : null }, renderRange(data), profile),
         renderFinancials(item),
       ),
     );
   } else {
+    shownPivot = null;
     sections.push(el('div', { class: 'primary' }, renderNoSession(data)));
     const about = [renderProfile(item), renderFinancials(item)].filter(Boolean);
     if (about.length) sections.push(el('div', { class: 'fundamentals' }, ...about));
@@ -551,6 +532,10 @@ function render() {
     ),
   );
 
+  if (fresh) sections.forEach((section, index) => {
+    section.classList.add('reveal');
+    section.style.setProperty('--i', index);
+  });
   result.replaceChildren(...sections);
   drawChart?.();
 
@@ -565,18 +550,45 @@ function render() {
     : noSessionText(data).title;
 }
 
+async function showCurrent({ fresh = false } = {}) {
+  const token = ++loadToken;
+  const { symbol } = instrument;
+  if (!market.isLoaded(symbol)) {
+    setBusy(true);
+    try {
+      await market.load(symbol);
+    } catch {
+      if (token === loadToken) {
+        setBusy(false);
+        renderLoadError();
+      }
+      return;
+    }
+    if (token !== loadToken) return;
+    setBusy(false);
+  }
+  // Until someone picks a date, each stock opens on its own latest session, as thinly traded ones may not have traded today.
+  if (!dateTouched) {
+    const item = await market.load(symbol);
+    dateInput.value = isoDay(item.days.at(-1));
+  }
+  transition(() => render({ fresh }));
+}
+
 function goToDate(iso) {
+  dateTouched = true;
   dateInput.value = iso;
-  render();
+  showCurrent();
 }
 
 function selectInstrument(symbol, label) {
   instrument = { symbol, label };
   instrumentInput.value = label;
-  for (const button of presets) {
+  shownPivot = null;
+  for (const button of presetsHost.querySelectorAll('button')) {
     button.setAttribute('aria-pressed', String(button.dataset.symbol === symbol));
   }
-  render();
+  return showCurrent({ fresh: true });
 }
 
 /* Search box */
@@ -623,7 +635,7 @@ function showOptions(results) {
           onclick: () => chooseOption(option),
         },
         el('span', { class: 'option-name' }, option.name),
-        el('span', { class: 'option-meta' }, [option.symbol === option.name ? null : option.symbol, option.exchange, option.type].filter(Boolean).join(' · ')),
+        el('span', { class: 'option-meta' }, [option.symbol === option.name ? null : displaySymbol(option.symbol), option.exchange, option.type].filter(Boolean).join(' · ')),
       ),
     ),
   );
@@ -671,23 +683,120 @@ instrumentInput.addEventListener('blur', () => {
   if (instrument) instrumentInput.value = instrument.label;
 });
 
+/* Views */
+
+function moveMenuIndicator() {
+  const active = menuLinks.find((link) => link.getAttribute('aria-current') === 'page');
+  if (!active) return;
+  menuIndicator.style.width = `${active.offsetWidth}px`;
+  menuIndicator.style.transform = `translateX(${active.offsetLeft}px)`;
+}
+
+async function loadIpos() {
+  if (iposLoaded) return;
+  iposLoaded = true;
+  const host = views.ipos;
+  setBusy(true);
+  try {
+    const response = await fetch(dataUrl('ipos.json'));
+    if (!response.ok) throw new Error('IPO data unavailable');
+    const data = await response.json();
+    transition(() =>
+      renderIpoView(host, data, {
+        canOpen: (symbol) => market.has(symbol),
+        open: (symbol) => {
+          const entry = market.entry(symbol);
+          location.hash = '#pivot';
+          selectInstrument(symbol, entry.label ?? entry.name);
+        },
+      }),
+    );
+  } catch {
+    iposLoaded = false;
+    host.replaceChildren(
+      el(
+        'article',
+        { class: 'hero is-message' },
+        el('p', { class: 'message-title' }, 'Couldn’t load IPO data'),
+        el('p', { class: 'message-body' }, 'Check your internet connection and try again.'),
+        el('div', { class: 'actions' }, el('button', { type: 'button', onclick: loadIpos }, 'Try again')),
+      ),
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+function showView(name) {
+  transition(() => {
+    for (const [viewName, node] of Object.entries(views)) node.hidden = viewName !== name;
+    for (const link of menuLinks) {
+      if (link.dataset.view === name) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    }
+    moveMenuIndicator();
+    document.title = name === 'ipos' ? 'IPOs · Pivot Calculator' : 'Pivot Calculator';
+    window.scrollTo({ top: 0 });
+  });
+  if (name === 'ipos') loadIpos();
+  else drawChart?.();
+}
+
+const viewFromHash = () => (location.hash === '#ipos' ? 'ipos' : 'pivot');
+window.addEventListener('hashchange', () => showView(viewFromHash()));
+window.addEventListener('resize', moveMenuIndicator);
+
+/* Theme */
+
+const themeButton = document.querySelector('#theme-toggle');
+themeButton.addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === 'dark'
+    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const next = isDark ? 'light' : 'dark';
+  transition(() => {
+    document.documentElement.dataset.theme = next;
+  });
+  try {
+    localStorage.setItem('theme', next);
+  } catch {
+    // Without storage the choice still lasts until the page closes.
+  }
+  drawChart?.();
+});
+
 /* Wiring */
 
+function renderPresets() {
+  presetsHost.replaceChildren(
+    ...market.strip.map(({ symbol, label, close, changePercent, currency }) =>
+      el(
+        'button',
+        { type: 'button', 'data-symbol': symbol, 'data-label': label, 'aria-pressed': 'false', onclick: () => selectInstrument(symbol, label) },
+        el('span', { class: 'preset-name' }, label),
+        el('span', { class: 'preset-close' }, formatNumber(close, currency)),
+        changePercent === null ? null : el('span', { class: `preset-change ${directionClass(changePercent) ?? ''}` }, `${formatSigned(changePercent)}%`),
+      ),
+    ),
+  );
+}
+
 document.querySelector('#controls').addEventListener('submit', (event) => event.preventDefault());
-dateInput.addEventListener('change', render);
+dateInput.addEventListener('change', () => {
+  dateTouched = true;
+  showCurrent();
+});
 previousDay.addEventListener('click', () => current?.previousSession && goToDate(current.previousSession));
 nextDay.addEventListener('click', () => current?.nextSession && goToDate(current.nextSession));
-for (const button of presets) {
-  button.addEventListener('click', () => selectInstrument(button.dataset.symbol, button.textContent));
-}
 
 let lastWidth = 0;
 new ResizeObserver(([entry]) => {
   if (entry.contentRect.width !== lastWidth) {
     lastWidth = entry.contentRect.width;
     drawChart?.();
+    moveMenuIndicator();
   }
-}).observe(result);
+}).observe(document.querySelector('main'));
 
 instrumentInput.placeholder = `Search ${market.coverage}`;
 dateInput.min = market.minDate;
@@ -695,18 +804,15 @@ dateInput.max = market.maxDate;
 
 const status = document.querySelector('#data-status');
 const dataAgeDays = (Date.now() - Date.parse(market.maxDate)) / 86_400_000;
-const isStale = site.autoUpdates && dataAgeDays > STALE_AFTER_DAYS;
-const updateLabel = !site.autoUpdates ? 'Not live' : isStale ? 'Updates may have stopped' : 'Updates every evening';
-status.textContent = `Prices to ${formatDate(market.maxDate)} · News from ${formatPlainDate(market.builtOn)} · ${updateLabel}`;
+const isStale = dataAgeDays > STALE_AFTER_DAYS;
+status.replaceChildren(
+  `Prices to ${formatPlainDate(market.maxDate)}`,
+  isStale ? ' · Updates may have stopped' : el('span', { class: 'status-more' }, ' · Updates every evening'),
+);
 status.classList.toggle('is-stale', isStale);
-document.querySelector('#update-note').textContent = site.autoUpdates
-  ? 'New prices and news arrive every evening, India time, once NSE publishes its reports. Figures are from the finished trading days shown at the top.'
-  : "This copy doesn't update, so its prices and news stay as they were on the dates shown at the top.";
-if (site.currentUrl) {
-  const moved = document.querySelector('#moved-note');
-  moved.replaceChildren('This copy no longer updates. ', externalLink(site.currentUrl, 'Open the live site ↗'));
-  moved.hidden = false;
-}
 
+renderPresets();
 dateInput.value = market.maxDate;
-selectInstrument(presets[0].dataset.symbol, presets[0].textContent);
+const firstPreset = market.strip[0];
+selectInstrument(firstPreset.symbol, firstPreset.label);
+showView(viewFromHash());

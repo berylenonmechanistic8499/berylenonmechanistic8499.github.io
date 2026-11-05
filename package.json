@@ -6,9 +6,10 @@
   "description": "Calculates the pivot point of a stock or index for a chosen date.",
   "scripts": {
     "test": "node --test",
-    "collect": "node scripts/collect.js",
+    "collect": "node --max-old-space-size=4096 scripts/collect.js",
     "assemble": "node scripts/assemble.js",
-    "build": "node scripts/collect.js && node scripts/assemble.js"
+    "build": "npm run collect && npm run assemble",
+    "preview": "node scripts/preview.js"
   },
   "engines": {
     "node": ">=18"

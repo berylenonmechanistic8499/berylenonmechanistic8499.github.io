@@ -48,7 +48,7 @@ const tag = (item, name) => {
   return match ? decodeEntities(match[1].replace(/^<!\[CDATA\[|\]\]>$/g, '').trim()) : '';
 };
 
-export function parseHeadlines(xml, { now = Date.now(), isRelevant = () => true } = {}) {
+export function parseHeadlines(xml, { now = Date.now(), isRelevant = () => true, limit = HEADLINES_PER_INSTRUMENT } = {}) {
   const seen = new Set();
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)]
     .map(([, item]) => {
@@ -75,7 +75,7 @@ export function parseHeadlines(xml, { now = Date.now(), isRelevant = () => true 
       seen.add(key);
       return true;
     })
-    .slice(0, HEADLINES_PER_INSTRUMENT)
+    .slice(0, limit)
     .map(({ title, publisher, url, time }) => ({
       title,
       publisher,
@@ -94,7 +94,7 @@ export function newsSearchUrl(query, region = 'IN') {
   return `https://news.google.com/search?${params}`;
 }
 
-export async function fetchHeadlines({ key, query, region = 'IN', isRelevant }) {
+export async function fetchHeadlines({ key, query, region = 'IN', isRelevant, limit }) {
   const today = new Date().toISOString().slice(0, 10);
   const params = new URLSearchParams({
     q: `${query} when:30d`,
@@ -106,5 +106,5 @@ export async function fetchHeadlines({ key, query, region = 'IN', isRelevant }) 
     `news/${today}/${key.replace(/[^\w-]/g, '_')}.xml`,
     `https://news.google.com/rss/search?${params}`,
   );
-  return body ? parseHeadlines(body.toString('utf8'), { isRelevant }) : [];
+  return body ? parseHeadlines(body.toString('utf8'), { isRelevant, limit }) : [];
 }
